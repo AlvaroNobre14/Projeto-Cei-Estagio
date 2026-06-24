@@ -85,9 +85,13 @@
     .top-actions { display: flex; align-items: center; gap: 8px; }
     .nav-tabs {
       display: flex; gap: 4px; padding: 4px;
-      border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, .34);
     }
-    [data-theme="dark"] .nav-tabs { background: rgba(15, 23, 42, .34); }
+    .nav-title {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 40px; padding: 0 14px; color: var(--text);
+      font-size: 16px; font-weight: 850;
+    }
+    .nav-title i { color: var(--blue); }
     .tab, .btn {
       height: 40px; border: 1px solid transparent; border-radius: 12px;
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -99,7 +103,13 @@
     .btn:hover, .tab:hover { transform: translateY(-1px); border-color: rgba(37, 99, 235, .28); }
     .btn.primary { color: white; border-color: transparent; background: linear-gradient(135deg, #2563eb, #0ea5e9); box-shadow: 0 18px 46px rgba(37, 99, 235, .26); }
     .btn.ghost { box-shadow: none; background: rgba(255,255,255,.45); }
+    .btn.danger {
+      color: #b91c1c; border-color: rgba(220, 38, 38, .18);
+      background: rgba(254, 242, 242, .82); box-shadow: 0 10px 28px rgba(220, 38, 38, .08);
+    }
+    .btn.danger:hover { border-color: rgba(220, 38, 38, .36); background: rgba(254, 226, 226, .94); }
     [data-theme="dark"] .btn.ghost { background: rgba(15, 23, 42, .45); }
+    [data-theme="dark"] .btn.danger { color: #fecaca; background: rgba(127, 29, 29, .28); border-color: rgba(248, 113, 113, .22); }
 
     .main { padding: 26px 0 44px; }
     .hero {
@@ -194,6 +204,7 @@
     .muted { color: var(--muted); }
     .truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .pill { display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 999px; color: var(--blue); background: var(--blue-soft); font-size: 12px; font-weight: 850; }
+    .row-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .table-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--line); }
 
     .side-stack { display: grid; gap: 16px; }
@@ -1057,7 +1068,7 @@
         <div class="showcase-grid">
           <div class="showcase-metric"><span>Visitas</span><strong>2026</strong></div>
           <div class="showcase-metric"><span>Escolas</span><strong>Rede</strong></div>
-          <div class="showcase-metric"><span>Estado</span><strong>Online</strong></div>
+          <div class="showcase-metric"><span>Estado</span><strong>Ativo</strong></div>
         </div>
         <div class="showcase-chart">
           <span style="height:36%"></span>
@@ -1098,13 +1109,13 @@
           </div>
         </div>
         <div class="nav-tabs">
-          <button class="tab active" data-tab="operations"><i data-lucide="table-2"></i> Operações</button>
+          <div class="nav-title"><i data-lucide="table-2"></i> Operações</div>
         </div>
         <div class="top-actions">
-          <span class="badge green" id="connStatus">A iniciar</span>
+          <span class="badge green" id="connStatus" style="display:none">A iniciar</span>
           <button class="btn ghost" id="themeBtn" title="Alternar tema"><i data-lucide="sun-medium"></i></button>
           <button class="btn ghost" id="logoutBtn" title="Terminar sessão"><i data-lucide="log-out"></i></button>
-          <button class="btn" id="refreshBtn"><i data-lucide="refresh-cw"></i> Sincronizar</button>
+          <button class="btn" id="refreshBtn" title="Atualizar dados" aria-label="Atualizar dados"><i data-lucide="refresh-cw"></i></button>
         </div>
       </div>
     </header>
@@ -1120,10 +1131,6 @@
           <span class="command-kicker">ROBO Lab Command Center</span>
           <h2>Gestão de Agendamentos e Experiências</h2>
           <p>Consola operacional para visitas escolares, recursos pedagógicos e análise executiva do laboratório.</p>
-        </div>
-        <div class="command-status">
-          <span class="pulse-dot"></span>
-          <strong>Base de dados sincronizada</strong>
         </div>
       </section>
 
@@ -1198,8 +1205,8 @@
       <div class="form-grid">
         <label>Referência<input class="field" name="referencia" placeholder="TI437/2025" /></label>
         <label>Data<input class="field" name="data_sessao" type="date" required /></label>
-        <label>Hora início<input class="field" name="hora_inicio" type="time" required /></label>
-        <label>Hora fim<input class="field" name="hora_fim" type="time" required /></label>
+        <label>Hora início<select class="field" name="hora_inicio" id="startTime" required></select></label>
+        <label>Hora fim<select class="field" name="hora_fim" id="endTime" required></select></label>
         <label>Escola / Grupo
           <span class="select-row">
             <select class="field" name="escola_id" id="formSchool" required></select>
@@ -1299,7 +1306,7 @@
       }
       state.loading = true;
       hideError();
-      $("connStatus").textContent = "A sincronizar";
+      $("connStatus").textContent = "A atualizar";
       skeletons();
 
       try {
@@ -1316,7 +1323,7 @@
         state.resources = resources.data || [];
         state.sessions = (sessions.data || []).map((row) => normalizeSession(row));
         state.loading = false;
-        $("connStatus").textContent = "Online";
+        $("connStatus").textContent = "Ativo";
         render();
       } catch (error) {
         state.loading = false;
@@ -1372,8 +1379,8 @@
       const avg = visits ? state.sessions.reduce((s, r) => s + durationMinutes(r.duracao, r.hora_inicio, r.hora_fim), 0) / visits : 0;
       const cards = [
         ["calendar-check", "Visitas Agendadas", nf.format(visits), "Sessões registadas"],
-        ["graduation-cap", "Total de Alunos", nf.format(students), "Total de visitantes"],
-        ["users", "Professores Acompanhantes", nf.format(teachers), "Acompanhantes"],
+        ["graduation-cap", "Discentes", nf.format(students), "Total de visitantes"],
+        ["users", "Docentes", nf.format(teachers), "Acompanhantes"],
         ["timer", "Duração Média", minToDuration(avg), "Tempo médio"]
       ];
       $("kpiDeck").innerHTML = cards.map((c, i) => `
@@ -1404,6 +1411,16 @@
       }).join("");
       select.innerHTML = `<option value="">${escape(label)}</option>${options}`;
       select.value = selected || "";
+    }
+
+    function hydrateTimeSelects() {
+      const buildOptions = (maxMinutes) => Array.from({ length: Math.floor(maxMinutes / 30) + 1 }, (_, index) => {
+        const minutes = index * 30;
+        const value = `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+        return `<option value="${value}">${value}</option>`;
+      }).join("");
+      $("startTime").innerHTML = `<option value="">Selecionar hora</option>${buildOptions(20 * 60)}`;
+      $("endTime").innerHTML = `<option value="">Selecionar hora</option>${buildOptions((20 * 60) + 30)}`;
     }
 
     function filteredRows() {
@@ -1437,6 +1454,7 @@
       $("nextPage").disabled = state.page >= pages;
       $("tableBody").innerHTML = pageRows.length ? pageRows.map(rowTemplate).join("") : `<tr><td colspan="8" class="muted" style="text-align:center;padding:48px">Sem sessões para os filtros atuais.</td></tr>`;
       document.querySelectorAll("[data-detail]").forEach((btn) => btn.addEventListener("click", () => openDrawer(btn.dataset.detail)));
+      document.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", () => deleteSession(btn.dataset.delete)));
     }
 
     function rowTemplate(r) {
@@ -1449,7 +1467,12 @@
           <td><span class="pill">${escape(r.lingua || "PT")}</span></td>
           <td><strong>${nf.format(num(r.total_pax))}</strong><br><span class="muted">${nf.format(num(r.num_discentes))} alunos · ${nf.format(num(r.num_docentes))} prof.</span></td>
           <td><div class="truncate-2">${escape(r.recurso_nome)}</div></td>
-          <td style="text-align:right"><button class="btn" data-detail="${escapeAttr(r.id)}"><i data-lucide="panel-right-open"></i> Análise</button></td>
+          <td>
+            <div class="row-actions">
+              <button class="btn" data-detail="${escapeAttr(r.id)}"><i data-lucide="panel-right-open"></i> Análise</button>
+              <button class="btn danger" data-delete="${escapeAttr(r.id)}"><i data-lucide="trash-2"></i> Apagar</button>
+            </div>
+          </td>
         </tr>
       `;
     }
@@ -1536,6 +1559,21 @@
       };
       const { error } = await db.from(TABLES.sessions).insert([payload]);
       if (error) throw error;
+    }
+
+    async function deleteSession(id) {
+      const row = state.sessions.find((session) => String(session.id) === String(id));
+      if (!row) return;
+      const label = row.referencia || row.escola_nome || "esta sessão";
+      if (!confirm(`Apagar ${label}? Esta ação não pode ser anulada.`)) return;
+      try {
+        const { error } = await db.from(TABLES.sessions).delete().eq("id", id);
+        if (error) throw error;
+        toast("Agendamento apagado", "A sessão foi removida com sucesso.");
+        loadAll();
+      } catch (error) {
+        toast("Erro ao apagar", error.message || "Não foi possível apagar a sessão.");
+      }
     }
 
     function bindEvents() {
@@ -1769,6 +1807,7 @@
     }
     function escapeAttr(value) { return escape(value).replace(/`/g, "&#096;"); }
 
+    hydrateTimeSelects();
     bindEvents();
     skeletons();
     icons();
