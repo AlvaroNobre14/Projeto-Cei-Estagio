@@ -1,0 +1,1778 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CEI ROBOLab - Enterprise Operations & Analytics Hub 2026</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --bg: #eef2f7;
+      --bg2: #dbeafe;
+      --panel: rgba(255, 255, 255, .78);
+      --panel-strong: rgba(255, 255, 255, .94);
+      --text: #0f172a;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, .10);
+      --blue: #2563eb;
+      --blue-soft: rgba(37, 99, 235, .11);
+      --emerald: #059669;
+      --amber: #d97706;
+      --danger: #dc2626;
+      --shadow: 0 28px 80px rgba(15, 23, 42, .14);
+      --radius: 18px;
+    }
+
+    [data-theme="dark"] {
+      --bg: #111827;
+      --bg2: #172554;
+      --panel: rgba(30, 41, 59, .74);
+      --panel-strong: rgba(15, 23, 42, .92);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --line: rgba(255, 255, 255, .10);
+      --blue-soft: rgba(96, 165, 250, .14);
+      --shadow: 0 28px 90px rgba(0, 0, 0, .32);
+    }
+
+    * { box-sizing: border-box; }
+    html { color-scheme: light dark; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 8% 0%, rgba(37, 99, 235, .20), transparent 34rem),
+        radial-gradient(circle at 86% 8%, rgba(5, 150, 105, .16), transparent 30rem),
+        linear-gradient(135deg, var(--bg) 0%, #f8fafc 46%, var(--bg2) 100%);
+      transition: background .25s ease, color .25s ease;
+    }
+
+    [data-theme="dark"] body {
+      background:
+        radial-gradient(circle at 10% 0%, rgba(37, 99, 235, .32), transparent 35rem),
+        radial-gradient(circle at 86% 10%, rgba(16, 185, 129, .18), transparent 31rem),
+        linear-gradient(135deg, #111827 0%, #0f172a 52%, #172554 100%);
+    }
+
+    button, input, select, textarea { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: .45; }
+
+    .app-shell { min-height: 100vh; }
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      border-bottom: 1px solid var(--line);
+      background: rgba(248, 250, 252, .76);
+      backdrop-filter: blur(20px);
+    }
+    [data-theme="dark"] .topbar { background: rgba(15, 23, 42, .76); }
+    .topbar-inner, .main { width: min(1540px, calc(100% - 32px)); margin: 0 auto; }
+    .topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; }
+    .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .logo {
+      display: grid; place-items: center;
+      width: 44px; height: 44px; border-radius: 14px;
+      color: white; background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      box-shadow: 0 18px 48px rgba(37, 99, 235, .28);
+    }
+    .brand h1 { margin: 0; font-size: 17px; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 12px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .nav-tabs {
+      display: flex; gap: 4px; padding: 4px;
+      border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, .34);
+    }
+    [data-theme="dark"] .nav-tabs { background: rgba(15, 23, 42, .34); }
+    .tab, .btn {
+      height: 40px; border: 1px solid transparent; border-radius: 12px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 0 14px; font-weight: 780; font-size: 14px;
+      color: var(--muted); background: transparent; transition: .18s ease;
+    }
+    .tab.active { color: white; background: #2563eb; box-shadow: 0 14px 34px rgba(37, 99, 235, .22); }
+    .btn { color: var(--text); background: var(--panel-strong); border-color: var(--line); box-shadow: 0 10px 28px rgba(15, 23, 42, .06); }
+    .btn:hover, .tab:hover { transform: translateY(-1px); border-color: rgba(37, 99, 235, .28); }
+    .btn.primary { color: white; border-color: transparent; background: linear-gradient(135deg, #2563eb, #0ea5e9); box-shadow: 0 18px 46px rgba(37, 99, 235, .26); }
+    .btn.ghost { box-shadow: none; background: rgba(255,255,255,.45); }
+    [data-theme="dark"] .btn.ghost { background: rgba(15, 23, 42, .45); }
+
+    .main { padding: 26px 0 44px; }
+    .hero {
+      display: grid; grid-template-columns: 1.45fr .55fr; gap: 16px; margin-bottom: 16px;
+    }
+    .glass {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(24px);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+    }
+    .hero-main { padding: 28px; min-height: 236px; position: relative; overflow: hidden; }
+    .hero-main::after {
+      content: ""; position: absolute; inset: auto -90px -130px auto;
+      width: 380px; height: 380px; border-radius: 999px;
+      background: radial-gradient(circle, rgba(37,99,235,.18), transparent 65%);
+      pointer-events: none;
+    }
+    .eyebrow { margin: 0 0 10px; color: var(--blue); font-size: 12px; font-weight: 850; letter-spacing: .18em; text-transform: uppercase; }
+    .hero h2 { margin: 0; max-width: 900px; font-size: clamp(30px, 4vw, 58px); line-height: .98; letter-spacing: -.055em; }
+    .hero-copy { margin: 16px 0 0; max-width: 760px; color: var(--muted); line-height: 1.7; font-size: 15px; }
+    .badges { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+    .badge {
+      display: inline-flex; align-items: center; gap: 7px;
+      min-height: 28px; padding: 5px 10px; border-radius: 999px;
+      border: 1px solid var(--line); color: var(--text);
+      background: rgba(255, 255, 255, .48); font-size: 12px; font-weight: 800;
+    }
+    [data-theme="dark"] .badge { background: rgba(15, 23, 42, .48); }
+    .badge.blue { border-color: rgba(37,99,235,.20); color: #1d4ed8; background: rgba(37,99,235,.10); }
+    .badge.green { border-color: rgba(5,150,105,.20); color: var(--emerald); background: rgba(5,150,105,.10); }
+    [data-theme="dark"] .badge.blue { color: #93c5fd; }
+    [data-theme="dark"] .badge.green { color: #86efac; }
+    .status-card { padding: 22px; display: grid; gap: 12px; }
+    .status-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.42); }
+    [data-theme="dark"] .status-line { background: rgba(15, 23, 42, .32); }
+    .status-line span { color: var(--muted); font-size: 13px; font-weight: 650; }
+    .status-line strong { font-size: 15px; }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 16px 0; }
+    .kpi { padding: 18px; min-height: 144px; animation: rise .5s ease both; }
+    .kpi-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .kpi-label { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.35; font-weight: 850; letter-spacing: .12em; text-transform: uppercase; }
+    .iconbox { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--blue-soft); color: var(--blue); }
+    .kpi-value { display: block; margin-top: 18px; font-size: 31px; line-height: 1; letter-spacing: -.045em; }
+    .kpi-note { margin: 9px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+    .module { overflow: hidden; animation: fade .35s ease both; }
+    .module-head {
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+      padding: 20px; border-bottom: 1px solid var(--line);
+    }
+    .module-title h3 { margin: 4px 0 0; font-size: 22px; letter-spacing: -.035em; }
+    .module-title p { margin: 6px 0 0; color: var(--muted); font-size: 14px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+    .field {
+      height: 42px; min-width: 170px; border-radius: 12px; border: 1px solid var(--line);
+      color: var(--text); background: rgba(255,255,255,.72); outline: none; padding: 0 12px; font-weight: 650;
+      transition: .18s ease;
+    }
+    [data-theme="dark"] .field { background: rgba(15, 23, 42, .68); }
+    .field:focus { border-color: rgba(37,99,235,.55); box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
+    .field.search { min-width: 250px; }
+    textarea.field { height: auto; min-height: 150px; padding: 12px; line-height: 1.55; resize: vertical; }
+    .select-row { display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 8px; }
+    .icon-btn {
+      width: 42px; height: 42px; border-radius: 12px; border: 1px solid var(--line);
+      color: white; background: linear-gradient(135deg, #2563eb, #0ea5e9);
+      display: grid; place-items: center; box-shadow: 0 14px 34px rgba(37, 99, 235, .18);
+    }
+    .inline-create {
+      display: none; grid-column: 1 / -1; gap: 8px; padding: 12px;
+      border: 1px solid rgba(37,99,235,.18); border-radius: 14px; background: var(--blue-soft);
+    }
+    .inline-create.show { display: grid; }
+    .inline-create .inline-create-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; min-width: 1080px; border-collapse: collapse; }
+    th {
+      padding: 14px 16px; text-align: left; color: var(--muted);
+      font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em;
+      background: rgba(255,255,255,.30);
+    }
+    [data-theme="dark"] th { background: rgba(15,23,42,.36); }
+    td { padding: 16px; border-top: 1px solid var(--line); vertical-align: middle; font-size: 14px; }
+    tr { transition: background .18s ease, transform .18s ease; }
+    tbody tr:hover { background: rgba(37, 99, 235, .055); }
+    [data-theme="dark"] tbody tr:hover { background: rgba(59, 130, 246, .10); }
+    .ref { color: var(--blue); font-weight: 900; white-space: nowrap; }
+    .muted { color: var(--muted); }
+    .truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .pill { display: inline-flex; align-items: center; height: 26px; padding: 0 9px; border-radius: 999px; color: var(--blue); background: var(--blue-soft); font-size: 12px; font-weight: 850; }
+    .table-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 20px; border-top: 1px solid var(--line); }
+
+    .side-stack { display: grid; gap: 16px; }
+    .side-panel { padding: 20px; }
+    .list { display: grid; gap: 9px; margin-top: 14px; }
+    .list-item { padding: 12px; border-radius: 13px; border: 1px solid var(--line); background: rgba(255,255,255,.42); }
+    [data-theme="dark"] .list-item { background: rgba(15,23,42,.34); }
+    .list-item strong { display: block; font-size: 13px; }
+    .list-item small { display: block; margin-top: 4px; color: var(--muted); }
+
+    .skeleton { border-radius: 12px; background: linear-gradient(90deg, rgba(148,163,184,.22), rgba(148,163,184,.42), rgba(148,163,184,.22)); background-size: 200% 100%; animation: shimmer 1.25s infinite; }
+    .error {
+      display: none; margin-bottom: 16px; border: 1px solid rgba(220,38,38,.22);
+      border-radius: var(--radius); background: rgba(254,226,226,.76); color: #991b1b; padding: 18px;
+    }
+    [data-theme="dark"] .error { background: rgba(127,29,29,.28); color: #fecaca; }
+    .error.show { display: block; }
+
+    .drawer-backdrop, .modal-backdrop {
+      position: fixed; inset: 0; z-index: 50; opacity: 0; pointer-events: none;
+      background: rgba(15, 23, 42, .45); backdrop-filter: blur(9px); transition: .22s ease;
+    }
+    .drawer-backdrop.show, .modal-backdrop.show { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; inset: 0 0 0 auto; z-index: 60; width: min(620px, 100%);
+      transform: translateX(100%); transition: transform .25s ease;
+      border-left: 1px solid var(--line); background: var(--panel-strong); backdrop-filter: blur(24px); box-shadow: var(--shadow);
+      display: flex; flex-direction: column;
+    }
+    .drawer.show { transform: translateX(0); }
+    .drawer-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px; border-bottom: 1px solid var(--line); }
+    .drawer-body { padding: 20px; overflow: auto; }
+    .topic { display: flex; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.48); margin-bottom: 10px; line-height: 1.55; }
+    [data-theme="dark"] .topic { background: rgba(15,23,42,.38); }
+    .topic b { flex: 0 0 auto; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; color: white; background: var(--blue); font-size: 12px; }
+
+    .modal-card {
+      position: fixed; z-index: 70; inset: 50% auto auto 50%; width: min(860px, calc(100% - 28px)); max-height: 92vh;
+      transform: translate(-50%, -47%) scale(.97); opacity: 0; pointer-events: none; overflow: hidden;
+      transition: .22s ease; border: 1px solid var(--line); border-radius: 22px; background: var(--panel-strong); box-shadow: var(--shadow);
+    }
+    .modal-card.show { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: auto; }
+    .modal-head, .modal-foot { padding: 18px 20px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .modal-foot { border-top: 1px solid var(--line); border-bottom: 0; }
+    .modal-body { padding: 20px; overflow-y: auto; max-height: 62vh; }
+    .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .form-grid .full { grid-column: 1 / -1; }
+    label { display: grid; gap: 7px; font-size: 13px; color: var(--muted); font-weight: 850; }
+    .hidden { display: none !important; }
+    .data-fade { opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease; }
+    .data-fade.ready { opacity: 1; transform: translateY(0); }
+
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 3fr 2fr;
+      background: linear-gradient(135deg, var(--bg) 0%, #f8fafc 50%, var(--bg2) 100%);
+    }
+    [data-theme="dark"] .login-screen { background: linear-gradient(135deg, #111827 0%, #0f172a 52%, #172554 100%); }
+    .login-visual {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      min-height: 100vh;
+      align-items: flex-end;
+      padding: clamp(28px, 5vw, 72px);
+      color: white;
+      background:
+        radial-gradient(circle at 18% 20%, rgba(59, 130, 246, .38), transparent 30rem),
+        radial-gradient(circle at 82% 14%, rgba(16, 185, 129, .20), transparent 26rem),
+        linear-gradient(135deg, #020617 0%, #0f172a 58%, #111827 100%);
+    }
+    .login-visual::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: .16;
+      background-image:
+        linear-gradient(rgba(255,255,255,.16) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.16) 1px, transparent 1px);
+      background-size: 54px 54px;
+      mask-image: radial-gradient(circle at 35% 45%, black, transparent 72%);
+    }
+    .login-visual::after {
+      content: "";
+      position: absolute;
+      width: 520px;
+      height: 520px;
+      right: -180px;
+      top: -160px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(37,99,235,.34), transparent 68%);
+    }
+    .login-copy { position: relative; z-index: 1; max-width: 760px; }
+    .login-copy h1 { margin: 0; font-size: clamp(42px, 6vw, 88px); line-height: .92; letter-spacing: -.07em; }
+    .login-copy p { max-width: 620px; margin: 22px 0 0; color: rgba(226,232,240,.78); font-size: 17px; line-height: 1.8; }
+    .login-panel {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background: rgba(255,255,255,.42);
+      backdrop-filter: blur(22px);
+    }
+    [data-theme="dark"] .login-panel { background: rgba(15,23,42,.42); }
+    .login-card { width: min(420px, 100%); animation: rise .45s ease both; }
+    .login-card .logo { margin-bottom: 22px; }
+    .login-card h2 { margin: 0; font-size: 30px; letter-spacing: -.045em; }
+    .login-card p { margin: 8px 0 26px; color: var(--muted); line-height: 1.6; }
+    .login-form { display: grid; gap: 14px; }
+    .login-form .field { width: 100%; height: 48px; }
+    .login-error {
+      display: none;
+      border: 1px solid rgba(220,38,38,.20);
+      background: rgba(254,226,226,.72);
+      color: #991b1b;
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 13px;
+      font-weight: 750;
+    }
+    [data-theme="dark"] .login-error { color: #fecaca; background: rgba(127,29,29,.24); }
+    .login-error.show { display: block; }
+
+    .toast {
+      position: fixed; right: 18px; bottom: 18px; z-index: 90; width: min(410px, calc(100% - 36px));
+      display: none; padding: 15px; border-radius: 16px; border: 1px solid var(--line); background: var(--panel-strong); box-shadow: var(--shadow);
+    }
+    .toast.show { display: block; animation: rise .25s ease both; }
+
+    @keyframes shimmer { to { background-position: -200% 0; } }
+    @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+    @media (max-width: 1200px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .hero { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .login-screen { grid-template-columns: 1fr; }
+      .login-visual { min-height: 38vh; align-items: center; }
+      .login-panel { min-height: 62vh; }
+      .topbar-inner { align-items: stretch; flex-direction: column; }
+      .top-actions, .nav-tabs, .filters { width: 100%; }
+      .nav-tabs { order: 2; }
+      .tab, .btn, .field { flex: 1; min-width: 0; }
+      .hero-main { padding: 22px; }
+      .kpis, .form-grid { grid-template-columns: 1fr; }
+      .select-row, .inline-create .inline-create-row { grid-template-columns: 1fr; }
+      .module-head, .table-foot { align-items: stretch; flex-direction: column; }
+      .filters { justify-content: stretch; }
+      .field.search { min-width: 0; }
+    }
+
+    /* Premium SaaS polish layer */
+    :root {
+      --shadow-floating: 0 1px 1px rgba(15, 23, 42, .05), 0 18px 44px rgba(15, 23, 42, .16), 0 34px 90px rgba(15, 23, 42, .18);
+      --field-border: rgba(15, 23, 42, .12);
+      --field-border-focus: rgba(37, 99, 235, .62);
+      --field-glow: 0 0 0 4px rgba(37, 99, 235, .12), 0 10px 26px rgba(37, 99, 235, .10);
+    }
+    [data-theme="dark"] {
+      --shadow-floating: 0 1px 1px rgba(255, 255, 255, .04), 0 22px 54px rgba(0, 0, 0, .36), 0 42px 110px rgba(0, 0, 0, .42);
+      --field-border: rgba(255, 255, 255, .13);
+      --field-border-focus: rgba(96, 165, 250, .72);
+      --field-glow: 0 0 0 4px rgba(59, 130, 246, .18), 0 12px 30px rgba(37, 99, 235, .16);
+    }
+    .field {
+      border: 1px solid var(--field-border);
+      transition: all .3s cubic-bezier(.22, 1, .36, 1);
+    }
+    .field:hover { border-color: rgba(37,99,235,.30); }
+    .field:focus {
+      border-color: var(--field-border-focus);
+      box-shadow: var(--field-glow);
+      background: rgba(255,255,255,.92);
+    }
+    [data-theme="dark"] .field:focus { background: rgba(15, 23, 42, .88); }
+    .modal-backdrop,
+    .drawer-backdrop {
+      background: rgba(15, 23, 42, .38);
+      backdrop-filter: blur(8px);
+      transition: opacity .3s cubic-bezier(.22, 1, .36, 1);
+    }
+    .modal-card,
+    .drawer {
+      border-color: rgba(255,255,255,.18);
+      background: rgba(255,255,255,.78);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow-floating);
+    }
+    [data-theme="dark"] .modal-card,
+    [data-theme="dark"] .drawer {
+      background: rgba(15, 23, 42, .82);
+      border-color: rgba(255,255,255,.12);
+    }
+    .modal-card {
+      border-radius: 24px;
+      transition: opacity .3s cubic-bezier(.22, 1, .36, 1), transform .3s cubic-bezier(.22, 1, .36, 1);
+    }
+    .modal-card.show {
+      animation: fadeInUp .4s cubic-bezier(.22, 1, .36, 1) both;
+    }
+    .btn {
+      transition: all .3s cubic-bezier(.22, 1, .36, 1);
+    }
+    .btn.primary {
+      position: relative;
+      overflow: hidden;
+      border-color: rgba(255, 255, 255, .12);
+      background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 48%, #0ea5e9 100%);
+      box-shadow: 0 14px 34px rgba(37, 99, 235, .24), inset 0 1px 0 rgba(255,255,255,.22);
+    }
+    .btn.primary::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,.18), transparent 42%, rgba(255,255,255,.10));
+      transition: opacity .3s ease;
+    }
+    .btn.primary:hover {
+      transform: scale(1.02) translateY(-1px);
+      box-shadow: 0 20px 54px rgba(37, 99, 235, .34), inset 0 1px 0 rgba(255,255,255,.28);
+    }
+    .btn.primary:hover::before { opacity: 1; }
+    .btn.loading,
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: .72;
+      transform: none !important;
+      filter: saturate(.78);
+    }
+    .btn.loading i,
+    .btn.loading svg { opacity: 0; }
+    .btn.loading::after {
+      content: "";
+      width: 16px;
+      height: 16px;
+      border-radius: 999px;
+      border: 2px solid rgba(255,255,255,.42);
+      border-top-color: #fff;
+      animation: spin .8s linear infinite;
+      position: absolute;
+      left: 14px;
+    }
+    tbody tr {
+      animation: fadeInUp .4s cubic-bezier(.22, 1, .36, 1) both;
+    }
+    tbody tr:nth-child(2) { animation-delay: .025s; }
+    tbody tr:nth-child(3) { animation-delay: .05s; }
+    tbody tr:nth-child(4) { animation-delay: .075s; }
+    tbody tr:nth-child(5) { animation-delay: .10s; }
+    tbody tr:nth-child(6) { animation-delay: .125s; }
+    tbody tr:nth-child(7) { animation-delay: .15s; }
+    tbody tr:nth-child(8) { animation-delay: .175s; }
+    .badge,
+    .pill {
+      border-radius: 999px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.56);
+    }
+    .badge {
+      border-color: rgba(100, 116, 139, .14);
+      color: #334155;
+      background: rgba(226, 232, 240, .58);
+      font-weight: 850;
+    }
+    .badge.blue,
+    .pill {
+      border: 1px solid rgba(37,99,235,.16);
+      color: #1d4ed8;
+      background: rgba(191,219,254,.62);
+    }
+    .badge.green {
+      border: 1px solid rgba(5,150,105,.18);
+      color: #047857;
+      background: rgba(167,243,208,.58);
+    }
+    [data-theme="dark"] .badge { color: #cbd5e1; background: rgba(51, 65, 85, .52); border-color: rgba(255,255,255,.10); }
+    [data-theme="dark"] .badge.blue,
+    [data-theme="dark"] .pill { color: #bfdbfe; background: rgba(37, 99, 235, .18); border-color: rgba(147, 197, 253, .18); }
+    [data-theme="dark"] .badge.green { color: #86efac; background: rgba(5, 150, 105, .18); border-color: rgba(134, 239, 172, .18); }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Requested exact modal and login rules */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.4);
+      backdrop-filter: blur(12px);
+      padding: 24px;
+    }
+    .modal-content {
+      position: relative;
+      top: auto;
+      left: auto;
+      inset: auto;
+      width: min(860px, 100%);
+      max-height: 85vh;
+      overflow-y: auto;
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.25);
+      transform: translateY(15px);
+    }
+    .modal-content.show {
+      transform: translateY(0);
+      animation: fadeInUp 0.4s cubic-bezier(.22, 1, .36, 1) both;
+    }
+    .login-left-panel {
+      background: radial-gradient(circle at top left, #1e3a8a, #0f172a);
+      padding: 80px;
+    }
+    .login-badge {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #93c5fd;
+    }
+    .login-form input[type="email"],
+    .login-form input[type="password"],
+    .login-form input[type="text"] {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+    }
+    .login-form input[type="email"]:focus,
+    .login-form input[type="password"]:focus,
+    .login-form input[type="text"]:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.15);
+    }
+    .login-form button[type="submit"] {
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .login-form button[type="submit"]:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 20px 44px rgba(37, 99, 235, 0.38);
+    }
+
+    /* High-fidelity login redesign */
+    body {
+      font-family: Inter, "Plus Jakarta Sans", "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    }
+    .login-screen {
+      position: relative;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+    .login-panel {
+      position: relative;
+      z-index: 2;
+      box-shadow: -34px 0 80px rgba(15, 23, 42, .12);
+    }
+    .login-panel::before {
+      content: "";
+      position: absolute;
+      left: -54px;
+      top: 0;
+      width: 110px;
+      height: 100%;
+      background: inherit;
+      clip-path: polygon(42% 0, 100% 0, 100% 100%, 0 100%);
+      box-shadow: -22px 0 48px rgba(15, 23, 42, .10);
+      z-index: -1;
+    }
+    .login-left-panel {
+      background:
+        radial-gradient(circle at 16% 14%, rgba(96, 165, 250, .24), transparent 28rem),
+        radial-gradient(circle at 90% 82%, rgba(14, 165, 233, .13), transparent 24rem),
+        linear-gradient(135deg, #0b1329 0%, #1e293b 100%);
+      padding: 80px;
+    }
+    .login-copy h1 {
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1.05;
+    }
+    .login-badge,
+    .login-badge.blue,
+    .login-badge.green {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #60a5fa;
+      box-shadow: none;
+    }
+    .login-form input[type="email"],
+    .login-form input[type="password"],
+    .login-form input[type="text"] {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+    .login-form input[type="email"]:focus,
+    .login-form input[type="password"]:focus,
+    .login-form input[type="text"]:focus {
+      outline: none;
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+    .login-form button[type="submit"] {
+      background: linear-gradient(90deg, #2563eb 0%, #1d4ed8 100%);
+      border-radius: 12px;
+      padding: 14px;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+    }
+    .login-form button[type="submit"]:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 16px 34px rgba(37, 99, 235, 0.34);
+    }
+
+    /* Premium product-grade login and dashboard surface */
+    .login-screen {
+      grid-template-columns: minmax(0, 1.15fr) minmax(420px, .85fr);
+      background:
+        radial-gradient(circle at 72% 16%, rgba(37, 99, 235, .12), transparent 30rem),
+        linear-gradient(135deg, #eef4ff 0%, #f8fafc 58%, #e2e8f0 100%);
+    }
+    .login-left-panel {
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 34px;
+      align-items: end;
+      padding: 72px;
+      background:
+        linear-gradient(rgba(255,255,255,.026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.026) 1px, transparent 1px),
+        radial-gradient(circle at 22% 18%, rgba(59, 130, 246, .36), transparent 24rem),
+        radial-gradient(circle at 88% 76%, rgba(14, 165, 233, .20), transparent 26rem),
+        linear-gradient(135deg, #08111f 0%, #10233f 48%, #0f172a 100%);
+      background-size: 56px 56px, 56px 56px, auto, auto, auto;
+    }
+    .login-left-panel::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, transparent 72%, rgba(15,23,42,.34) 100%);
+      pointer-events: none;
+    }
+    .login-copy {
+      align-self: end;
+      max-width: 820px;
+    }
+    .login-copy h1 {
+      max-width: 820px;
+      font-size: clamp(46px, 5vw, 76px);
+      line-height: .94;
+      letter-spacing: -2.2px;
+      text-shadow: 0 24px 70px rgba(0,0,0,.34);
+    }
+    .login-copy p {
+      max-width: 740px;
+      color: rgba(226,232,240,.82);
+      font-size: 18px;
+    }
+    .login-badge {
+      backdrop-filter: blur(14px);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 12px 30px rgba(0,0,0,.16);
+    }
+    .login-showcase {
+      position: relative;
+      z-index: 2;
+      width: min(520px, 100%);
+      padding: 18px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,.105), rgba(255,255,255,.045));
+      box-shadow: 0 28px 90px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.12);
+      backdrop-filter: blur(22px);
+      animation: fadeInUp .55s cubic-bezier(.22, 1, .36, 1) both;
+    }
+    .showcase-top,
+    .showcase-grid,
+    .showcase-row {
+      position: relative;
+      z-index: 1;
+    }
+    .showcase-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 16px;
+    }
+    .showcase-top span,
+    .showcase-metric span {
+      display: block;
+      color: rgba(203,213,225,.70);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .showcase-top strong {
+      display: block;
+      margin-top: 4px;
+      color: #fff;
+      font-size: 17px;
+      letter-spacing: -.02em;
+    }
+    .showcase-top i {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      color: #bfdbfe;
+      background: rgba(37,99,235,.20);
+      border: 1px solid rgba(147,197,253,.18);
+    }
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .showcase-metric {
+      padding: 13px;
+      border-radius: 16px;
+      background: rgba(15,23,42,.34);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .showcase-metric strong {
+      display: block;
+      margin-top: 7px;
+      color: #eff6ff;
+      font-size: 20px;
+      letter-spacing: -.04em;
+    }
+    .showcase-chart {
+      display: flex;
+      align-items: end;
+      gap: 9px;
+      height: 112px;
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(15,23,42,.25), rgba(15,23,42,.48));
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .showcase-chart span {
+      flex: 1;
+      min-width: 12px;
+      border-radius: 999px 999px 4px 4px;
+      background: linear-gradient(180deg, #60a5fa, #2563eb);
+      box-shadow: 0 0 26px rgba(96,165,250,.24);
+    }
+    .showcase-row {
+      display: grid;
+      grid-template-columns: 1fr 82px;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .showcase-row span,
+    .showcase-row b {
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(226,232,240,.18);
+    }
+    .showcase-row.short { grid-template-columns: .72fr 120px; opacity: .72; }
+    .login-panel {
+      background:
+        radial-gradient(circle at 50% 18%, rgba(37,99,235,.08), transparent 24rem),
+        rgba(248,250,252,.92);
+    }
+    .login-card {
+      width: min(500px, 100%);
+      padding: 40px;
+      border: 1px solid rgba(15,23,42,.08);
+      border-radius: 28px;
+      background: rgba(255,255,255,.78);
+      box-shadow: 0 24px 80px rgba(15,23,42,.12), inset 0 1px 0 rgba(255,255,255,.72);
+      backdrop-filter: blur(18px);
+    }
+    .login-card .logo {
+      width: 56px;
+      height: 56px;
+      border-radius: 18px;
+      box-shadow: 0 22px 60px rgba(37,99,235,.28);
+    }
+    .login-card h2 {
+      font-size: 34px;
+      letter-spacing: -1.4px;
+    }
+    .login-form { gap: 18px; }
+    .login-form label {
+      gap: 9px;
+      color: #475569;
+      font-size: 13px;
+      letter-spacing: -.01em;
+    }
+    .login-form .field {
+      height: 56px;
+      padding-inline: 16px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.80);
+    }
+    .login-form button[type="submit"] {
+      height: 58px !important;
+      font-size: 15px;
+      box-shadow: 0 18px 38px rgba(37,99,235,.28);
+    }
+    .app-shell {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(37,99,235,.14), transparent 30rem),
+        linear-gradient(135deg, #eef4ff 0%, #f8fafc 44%, #e2e8f0 100%);
+    }
+    [data-theme="dark"] .app-shell {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(37,99,235,.28), transparent 30rem),
+        linear-gradient(135deg, #020617 0%, #0f172a 60%, #111827 100%);
+    }
+    .topbar {
+      background: rgba(255,255,255,.76);
+      box-shadow: 0 10px 36px rgba(15,23,42,.06);
+    }
+    .dashboard-command {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 16px;
+      padding: 24px;
+      border: 1px solid rgba(15,23,42,.08);
+      border-radius: 26px;
+      background:
+        radial-gradient(circle at 94% 20%, rgba(37,99,235,.16), transparent 18rem),
+        linear-gradient(135deg, rgba(255,255,255,.92), rgba(255,255,255,.62));
+      box-shadow: 0 24px 70px rgba(15,23,42,.10);
+      backdrop-filter: blur(18px);
+    }
+    [data-theme="dark"] .dashboard-command {
+      border-color: rgba(255,255,255,.10);
+      background:
+        radial-gradient(circle at 94% 20%, rgba(59,130,246,.22), transparent 18rem),
+        linear-gradient(135deg, rgba(15,23,42,.92), rgba(30,41,59,.62));
+    }
+    .command-kicker {
+      display: block;
+      color: #2563eb;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .16em;
+    }
+    .dashboard-command h2 {
+      margin: 8px 0 6px;
+      font-size: clamp(28px, 3vw, 42px);
+      line-height: 1;
+      letter-spacing: -1.8px;
+    }
+    .dashboard-command p {
+      margin: 0;
+      color: var(--muted);
+      max-width: 760px;
+      line-height: 1.65;
+    }
+    .command-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      white-space: nowrap;
+      padding: 12px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(5,150,105,.16);
+      background: rgba(167,243,208,.48);
+      color: #047857;
+      font-size: 13px;
+    }
+    .pulse-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: #10b981;
+      box-shadow: 0 0 0 6px rgba(16,185,129,.14), 0 0 20px rgba(16,185,129,.55);
+    }
+    .kpi {
+      border: 1px solid rgba(15,23,42,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.94), rgba(255,255,255,.70));
+      box-shadow: 0 20px 60px rgba(15,23,42,.08);
+    }
+    .kpi-value { font-size: 38px; }
+    .module {
+      border-radius: 26px;
+      border: 1px solid rgba(15,23,42,.08);
+      background: rgba(255,255,255,.82);
+      box-shadow: 0 26px 80px rgba(15,23,42,.10);
+    }
+    .module-head {
+      padding: 24px;
+      background: linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.28));
+    }
+    th {
+      background: rgba(241,245,249,.80);
+    }
+    tbody tr:hover {
+      background: rgba(37,99,235,.075);
+    }
+    @media (max-width: 980px) {
+      .login-screen { grid-template-columns: 1fr; }
+      .login-left-panel { min-height: auto; padding: 34px; }
+      .login-showcase { display: none; }
+      .login-panel::before { display: none; }
+      .dashboard-command { align-items: flex-start; flex-direction: column; }
+    }
+
+    /* Dark dashboard correction and executive polish */
+    [data-theme="dark"] body {
+      background:
+        radial-gradient(circle at 18% -8%, rgba(37, 99, 235, .22), transparent 34rem),
+        radial-gradient(circle at 94% 10%, rgba(14, 165, 233, .10), transparent 30rem),
+        linear-gradient(135deg, #020617 0%, #07111f 48%, #0f172a 100%);
+    }
+    [data-theme="dark"] .app-shell {
+      background:
+        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px),
+        radial-gradient(circle at 12% -4%, rgba(37,99,235,.22), transparent 30rem),
+        linear-gradient(135deg, #020617 0%, #08111f 52%, #0f172a 100%);
+      background-size: 46px 46px, 46px 46px, auto, auto;
+    }
+    [data-theme="dark"] .topbar {
+      border-bottom: 1px solid rgba(148, 163, 184, .12);
+      background: rgba(2, 6, 23, .78);
+      box-shadow: 0 18px 50px rgba(0,0,0,.26);
+    }
+    [data-theme="dark"] .dashboard-command {
+      border: 1px solid rgba(148, 163, 184, .16);
+      background:
+        radial-gradient(circle at 88% 18%, rgba(59,130,246,.24), transparent 18rem),
+        linear-gradient(135deg, rgba(15,23,42,.92), rgba(15,23,42,.68));
+      box-shadow: 0 28px 80px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    [data-theme="dark"] .dashboard-command h2,
+    [data-theme="dark"] .module-title h3,
+    [data-theme="dark"] .brand h1 {
+      color: #f8fafc;
+    }
+    [data-theme="dark"] .dashboard-command p,
+    [data-theme="dark"] .module-title p,
+    [data-theme="dark"] .kpi-note,
+    [data-theme="dark"] .muted {
+      color: #94a3b8;
+    }
+    [data-theme="dark"] .command-status {
+      border-color: rgba(52,211,153,.20);
+      background: rgba(6, 78, 59, .28);
+      color: #a7f3d0;
+    }
+    [data-theme="dark"] .kpi {
+      border: 1px solid rgba(148, 163, 184, .14);
+      background:
+        radial-gradient(circle at 92% 16%, rgba(37,99,235,.18), transparent 9rem),
+        linear-gradient(180deg, rgba(30,41,59,.82), rgba(15,23,42,.72));
+      box-shadow: 0 22px 70px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.05);
+    }
+    [data-theme="dark"] .kpi-label {
+      color: #93a4bc;
+    }
+    [data-theme="dark"] .kpi-value {
+      color: #f8fafc;
+      text-shadow: 0 12px 38px rgba(59,130,246,.18);
+    }
+    [data-theme="dark"] .iconbox {
+      background: rgba(37, 99, 235, .18);
+      color: #60a5fa;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    [data-theme="dark"] .module {
+      border: 1px solid rgba(148, 163, 184, .14);
+      background: rgba(15, 23, 42, .78);
+      box-shadow: 0 30px 90px rgba(0,0,0,.36), inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter: blur(22px);
+    }
+    [data-theme="dark"] .module-head {
+      background:
+        radial-gradient(circle at 96% 0%, rgba(37,99,235,.16), transparent 18rem),
+        linear-gradient(180deg, rgba(30,41,59,.72), rgba(15,23,42,.20));
+      border-bottom: 1px solid rgba(148, 163, 184, .14);
+    }
+    [data-theme="dark"] .field {
+      border-color: rgba(148, 163, 184, .18);
+      background: rgba(15, 23, 42, .82);
+      color: #f8fafc;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+    }
+    [data-theme="dark"] .field::placeholder {
+      color: #94a3b8;
+      opacity: .7;
+    }
+    [data-theme="dark"] .field:focus {
+      border-color: rgba(96,165,250,.74);
+      background: rgba(15, 23, 42, .96);
+      box-shadow: 0 0 0 4px rgba(37,99,235,.18), 0 16px 34px rgba(0,0,0,.22);
+    }
+    [data-theme="dark"] th {
+      color: #8ea1bb;
+      background: rgba(2, 6, 23, .48);
+      border-top: 1px solid rgba(148, 163, 184, .08);
+    }
+    [data-theme="dark"] td {
+      color: #e2e8f0;
+      border-top-color: rgba(148, 163, 184, .12);
+    }
+    [data-theme="dark"] tbody tr {
+      background: rgba(15, 23, 42, .22);
+    }
+    [data-theme="dark"] tbody tr:hover {
+      background: rgba(37, 99, 235, .13);
+    }
+    [data-theme="dark"] .table-foot {
+      border-top-color: rgba(148, 163, 184, .12);
+      background: rgba(2, 6, 23, .18);
+    }
+    [data-theme="dark"] .btn:not(.primary) {
+      border-color: rgba(148, 163, 184, .16);
+      background: rgba(15, 23, 42, .72);
+      color: #e2e8f0;
+      box-shadow: 0 12px 30px rgba(0,0,0,.18);
+    }
+    [data-theme="dark"] .ref {
+      color: #60a5fa;
+    }
+    [data-theme="dark"] .pill {
+      background: rgba(37,99,235,.22);
+      border-color: rgba(96,165,250,.24);
+      color: #bfdbfe;
+    }
+  </style>
+</head>
+<body>
+  <section class="login-screen" id="loginScreen">
+    <div class="login-visual login-left-panel">
+      <div class="login-copy">
+        <div class="badges">
+          <span class="badge blue login-badge">Secure Access</span>
+          <span class="badge green login-badge">Supabase Auth</span>
+          <span class="badge login-badge">Enterprise 2026</span>
+        </div>
+        <h1>CEI ROBOLab: Enterprise Operations & Analytics Hub 2026</h1>
+        <p>Gestão de visitas, sessões pedagógicas e agendamento de escolas numa superfície de comando segura, precisa e preparada para equipas de alto desempenho.</p>
+      </div>
+      <div class="login-showcase" aria-hidden="true">
+        <div class="showcase-top">
+          <div>
+            <span>Operational Overview</span>
+            <strong>Laboratório ROBOLab</strong>
+          </div>
+          <i data-lucide="radar"></i>
+        </div>
+        <div class="showcase-grid">
+          <div class="showcase-metric"><span>Visitas</span><strong>2026</strong></div>
+          <div class="showcase-metric"><span>Escolas</span><strong>Rede</strong></div>
+          <div class="showcase-metric"><span>Estado</span><strong>Online</strong></div>
+        </div>
+        <div class="showcase-chart">
+          <span style="height:36%"></span>
+          <span style="height:58%"></span>
+          <span style="height:44%"></span>
+          <span style="height:72%"></span>
+          <span style="height:64%"></span>
+          <span style="height:86%"></span>
+          <span style="height:68%"></span>
+        </div>
+        <div class="showcase-row"><span></span><b></b></div>
+        <div class="showcase-row short"><span></span><b></b></div>
+      </div>
+    </div>
+    <div class="login-panel">
+      <div class="login-card">
+        <div class="logo"><i data-lucide="bot"></i></div>
+        <h2>Entrar na plataforma</h2>
+        <p>Autenticação protegida por Supabase. Apenas utilizadores autorizados podem consultar o dashboard.</p>
+        <form class="login-form" id="loginForm">
+          <label>Email<input class="field" id="loginEmail" type="email" autocomplete="email" placeholder="nome@empresa.pt" required /></label>
+          <label>Palavra-passe<input class="field" id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" required /></label>
+          <div class="login-error" id="loginError"></div>
+          <button class="btn primary" id="loginButton" type="submit" style="height:48px"><i data-lucide="log-in"></i> Entrar</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <div class="app-shell hidden" id="appShell">
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="logo"><i data-lucide="bot"></i></div>
+          <div>
+            <h1>CEI ROBOLab</h1>
+            <p>Enterprise Operations & Analytics Hub 2026</p>
+          </div>
+        </div>
+        <div class="nav-tabs">
+          <button class="tab active" data-tab="operations"><i data-lucide="table-2"></i> Operações</button>
+        </div>
+        <div class="top-actions">
+          <span class="badge green" id="connStatus">A iniciar</span>
+          <button class="btn ghost" id="themeBtn" title="Alternar tema"><i data-lucide="sun-medium"></i></button>
+          <button class="btn ghost" id="logoutBtn" title="Terminar sessão"><i data-lucide="log-out"></i></button>
+          <button class="btn" id="refreshBtn"><i data-lucide="refresh-cw"></i> Sincronizar</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+      <div class="error" id="errorPanel">
+        <strong>Erro ao ligar ao Supabase</strong>
+        <div id="errorText" style="margin-top:6px"></div>
+      </div>
+
+      <section class="dashboard-command">
+        <div>
+          <span class="command-kicker">ROBO Lab Command Center</span>
+          <h2>Gestão de Agendamentos e Experiências</h2>
+          <p>Consola operacional para visitas escolares, recursos pedagógicos e análise executiva do laboratório.</p>
+        </div>
+        <div class="command-status">
+          <span class="pulse-dot"></span>
+          <strong>Base de dados sincronizada</strong>
+        </div>
+      </section>
+
+      <section class="kpis data-fade" id="kpiDeck"></section>
+
+      <section class="glass module" id="operationsModule">
+        <div class="module-head">
+          <div class="module-title">
+            <p class="eyebrow">Módulo de Operações e Experiências</p>
+            <h3>Sessões de laboratório</h3>
+            <p>Dados cruzados com escolas/grupos e modalidades/recursos.</p>
+          </div>
+          <div class="filters">
+            <input class="field search" id="searchInput" placeholder="Pesquisa inteligente" />
+            <select class="field" id="schoolFilter"><option value="">Todas as escolas</option></select>
+            <select class="field" id="resourceFilter"><option value="">Todos os recursos</option></select>
+            <button class="btn primary" id="newBtn"><i data-lucide="calendar-plus"></i> Novo agendamento</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th><button class="tab" data-sort="referencia">Ref.</button></th>
+                <th><button class="tab" data-sort="data_sessao">Data</button></th>
+                <th>Horário</th>
+                <th>Escola / Grupo</th>
+                <th>Língua</th>
+                <th><button class="tab" data-sort="total_pax">Pax</button></th>
+                <th>Recursos</th>
+                <th style="text-align:right">Ação</th>
+              </tr>
+            </thead>
+            <tbody class="data-fade" id="tableBody"></tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          <span class="muted" id="tableSummary">A carregar sessões...</span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn" id="prevPage"><i data-lucide="chevron-left"></i> Anterior</button>
+            <strong id="pageLabel">1 / 1</strong>
+            <button class="btn" id="nextPage">Seguinte <i data-lucide="chevron-right"></i></button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div>
+        <span class="badge blue" id="drawerLang">PT</span>
+        <h2 id="drawerTitle" style="margin:12px 0 4px">Análise detalhada</h2>
+        <p class="muted" id="drawerSubtitle" style="margin:0"></p>
+      </div>
+      <button class="btn ghost" id="closeDrawer"><i data-lucide="x"></i></button>
+    </div>
+    <div class="drawer-body" id="drawerBody"></div>
+  </aside>
+
+  <div class="modal-backdrop modal-overlay" id="modalBackdrop">
+  <form class="modal-card modal-content" id="scheduleModal">
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Novo agendamento</p>
+        <h2 style="margin:0">Inserção relacional no Supabase</h2>
+      </div>
+      <button class="btn ghost" type="button" id="closeModal"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <label>Referência<input class="field" name="referencia" placeholder="TI437/2025" /></label>
+        <label>Data<input class="field" name="data_sessao" type="date" required /></label>
+        <label>Hora início<input class="field" name="hora_inicio" type="time" required /></label>
+        <label>Hora fim<input class="field" name="hora_fim" type="time" required /></label>
+        <label>Escola / Grupo
+          <span class="select-row">
+            <select class="field" name="escola_id" id="formSchool" required></select>
+            <button class="icon-btn" type="button" id="addSchoolBtn" title="Adicionar nova escola"><i data-lucide="plus"></i></button>
+          </span>
+        </label>
+        <label>Modalidade / Recursos
+          <span class="select-row">
+            <select class="field" name="recurso_id" id="formResource" required></select>
+            <button class="icon-btn" type="button" id="addResourceBtn" title="Adicionar nova modalidade"><i data-lucide="plus"></i></button>
+          </span>
+        </label>
+        <div class="inline-create" id="schoolCreatePanel">
+          <strong>Adicionar nova escola / grupo</strong>
+          <div class="inline-create-row">
+            <input class="field" id="newSchoolName" placeholder="Nome da escola ou grupo" />
+            <button class="btn primary" type="button" id="saveSchoolBtn"><i data-lucide="plus"></i> Criar escola</button>
+          </div>
+        </div>
+        <div class="inline-create" id="resourceCreatePanel">
+          <strong>Adicionar nova modalidade / recurso</strong>
+          <div class="inline-create-row">
+            <input class="field" id="newResourceName" placeholder="Nome da modalidade ou recurso" />
+            <button class="btn primary" type="button" id="saveResourceBtn"><i data-lucide="plus"></i> Criar modalidade</button>
+          </div>
+        </div>
+        <label>Língua<select class="field" name="lingua"><option>PT</option><option>EN</option><option>ES</option><option>FR</option></select></label>
+        <label>N.º discentes<input class="field" name="num_discentes" type="number" min="0" value="0" required /></label>
+        <label>N.º docentes<input class="field" name="num_docentes" type="number" min="0" value="0" required /></label>
+        <div class="status-line"><span>Duração</span><strong id="formDuration">00:00</strong></div>
+        <label class="full">Objetivos / Motivação<textarea class="field" name="objetivos_motivacao" placeholder="Objetivos pedagógicos, enquadramento curricular e notas de sessão."></textarea></label>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="muted" id="formPax">Total pax: 0</span>
+      <button class="btn primary" type="submit" id="saveBtn"><i data-lucide="send"></i> Guardar no Supabase</button>
+    </div>
+  </form>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    "use strict";
+
+    const SUPABASE_URL = "https://oncmtxysluxvbiuvmfvk.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_Q11GwrRRBRIMn4xeCT9d0A_mGm3uAWu";
+    const db = window.supabase ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+    const TABLES = {
+      sessions: "sessoes_laboratorio",
+      schools: "escolas",
+      resources: "recursos"
+    };
+
+    const state = {
+      session: null,
+      realtimeChannel: null,
+      loading: true,
+      sessions: [],
+      schools: [],
+      resources: [],
+      query: "",
+      school: "",
+      resource: "",
+      sortKey: "data_sessao",
+      sortDir: "desc",
+      page: 1,
+      pageSize: 9
+    };
+
+    const $ = (id) => document.getElementById(id);
+    const nf = new Intl.NumberFormat("pt-PT");
+    const dateFmt = new Intl.DateTimeFormat("pt-PT", { day: "2-digit", month: "short", year: "numeric" });
+    const timeFmt = new Intl.DateTimeFormat("pt-PT", { hour: "2-digit", minute: "2-digit" });
+
+    document.documentElement.dataset.theme = localStorage.getItem("robolab-theme") || "light";
+
+    function icons() { if (window.lucide) lucide.createIcons(); }
+
+    function skeletons() {
+      setDataReady(false);
+      $("kpiDeck").innerHTML = Array.from({ length: 4 }).map(() => `
+        <article class="glass kpi"><div class="skeleton" style="height:18px;width:60%;"></div><div class="skeleton" style="height:40px;width:48%;margin-top:24px;"></div><div class="skeleton" style="height:14px;width:82%;margin-top:18px;"></div></article>
+      `).join("");
+      $("tableBody").innerHTML = Array.from({ length: 8 }).map(() => `<tr>${Array.from({ length: 8 }).map(() => `<td><div class="skeleton" style="height:18px"></div></td>`).join("")}</tr>`).join("");
+    }
+
+    async function loadAll() {
+      if (!db) {
+        showError("O SDK do Supabase não carregou. Confirma a ligação à internet/CDN.");
+        return;
+      }
+      if (!state.session) {
+        showLogin();
+        return;
+      }
+      state.loading = true;
+      hideError();
+      $("connStatus").textContent = "A sincronizar";
+      skeletons();
+
+      try {
+        const [sessions, schools, resources] = await Promise.all([
+          db.from(TABLES.sessions).select("*").order("data_sessao", { ascending: false }),
+          db.from(TABLES.schools).select("*").order("nome", { ascending: true }),
+          db.from(TABLES.resources).select("*").order("nome", { ascending: true })
+        ]);
+
+        const failed = [sessions, schools, resources].find((r) => r.error);
+        if (failed) throw failed.error;
+
+        state.schools = schools.data || [];
+        state.resources = resources.data || [];
+        state.sessions = (sessions.data || []).map((row) => normalizeSession(row));
+        state.loading = false;
+        $("connStatus").textContent = "Online";
+        render();
+      } catch (error) {
+        state.loading = false;
+        $("connStatus").textContent = "Erro";
+        showError(error.message || "Não foi possível carregar uma ou mais tabelas do Supabase.");
+        renderEmpty();
+      }
+    }
+
+    function normalizeSession(row) {
+      const schoolId = row.escola_id;
+      const resourceId = row.recurso_id;
+      const school = state.schools.find((item) => String(item.id) === String(schoolId));
+      const resource = state.resources.find((item) => String(item.id) === String(resourceId));
+      const students = num(row.num_discentes ?? row.num_alunos);
+      const teachers = num(row.num_docentes ?? row.num_professores);
+      return {
+        ...row,
+        data_sessao: row.data_sessao,
+        escola_nome: school?.nome || "Sem escola associada",
+        recurso_nome: resource?.nome || "Sem recurso associado",
+        num_discentes: students,
+        num_docentes: teachers,
+        total_pax: num(row.total_pax) || students + teachers,
+        duracao: row.duracao || calcDuration(row.hora_inicio, row.hora_fim)
+      };
+    }
+
+    function render() {
+      renderStatus();
+      renderKpis();
+      hydrateFilters();
+      renderTable();
+      requestAnimationFrame(() => setDataReady(true));
+      icons();
+    }
+
+    function setDataReady(isReady) {
+      ["kpiDeck", "tableBody"].forEach((id) => {
+        const element = $(id);
+        if (element) element.classList.toggle("ready", isReady);
+      });
+    }
+
+    function renderStatus() {
+      if ($("statusSessions")) $("statusSessions").textContent = nf.format(state.sessions.length);
+    }
+
+    function renderKpis() {
+      const visits = state.sessions.length;
+      const students = state.sessions.reduce((s, r) => s + num(r.num_discentes), 0);
+      const teachers = state.sessions.reduce((s, r) => s + num(r.num_docentes), 0);
+      const avg = visits ? state.sessions.reduce((s, r) => s + durationMinutes(r.duracao, r.hora_inicio, r.hora_fim), 0) / visits : 0;
+      const cards = [
+        ["calendar-check", "Visitas Agendadas", nf.format(visits), "Sessões registadas"],
+        ["graduation-cap", "Total de Alunos", nf.format(students), "Total de visitantes"],
+        ["users", "Professores Acompanhantes", nf.format(teachers), "Acompanhantes"],
+        ["timer", "Duração Média", minToDuration(avg), "Tempo médio"]
+      ];
+      $("kpiDeck").innerHTML = cards.map((c, i) => `
+        <article class="glass kpi" style="animation-delay:${i * 45}ms">
+          <div class="kpi-top"><p class="kpi-label">${escape(c[1])}</p><span class="iconbox"><i data-lucide="${c[0]}"></i></span></div>
+          <strong class="kpi-value">${escape(c[2])}</strong>
+          <p class="kpi-note">${escape(c[3])}</p>
+        </article>
+      `).join("");
+    }
+
+    function hydrateFilters() {
+      const schoolOptions = unique(state.sessions.map((r) => r.escola_nome));
+      const resourceOptions = unique(state.sessions.map((r) => r.recurso_nome));
+      if (state.school && !schoolOptions.includes(state.school)) state.school = "";
+      if (state.resource && !resourceOptions.includes(state.resource)) state.resource = "";
+      fillSelect($("schoolFilter"), schoolOptions, "Todas as escolas", state.school);
+      fillSelect($("resourceFilter"), resourceOptions, "Todos os recursos", state.resource);
+      fillSelect($("formSchool"), state.schools.map((s) => ({ value: s.id, label: s.nome })), "Selecionar escola/grupo");
+      fillSelect($("formResource"), state.resources.map((r) => ({ value: r.id, label: r.nome })), "Selecionar recurso");
+    }
+
+    function fillSelect(select, values, label, selected = "") {
+      const options = values.map((item) => {
+        const value = typeof item === "object" ? item.value : item;
+        const text = typeof item === "object" ? item.label : item;
+        return `<option value="${escapeAttr(value)}">${escape(text)}</option>`;
+      }).join("");
+      select.innerHTML = `<option value="">${escape(label)}</option>${options}`;
+      select.value = selected || "";
+    }
+
+    function filteredRows() {
+      const q = state.query.trim().toLowerCase();
+      return state.sessions.filter((r) => {
+        const hay = [r.referencia, r.escola_nome, r.recurso_nome, r.lingua, r.objetivos_motivacao].join(" ").toLowerCase();
+        return (!q || hay.includes(q)) && (!state.school || r.escola_nome === state.school) && (!state.resource || r.recurso_nome === state.resource);
+      }).sort(compareRows);
+    }
+
+    function compareRows(a, b) {
+      const dir = state.sortDir === "asc" ? 1 : -1;
+      let left = a[state.sortKey] ?? "";
+      let right = b[state.sortKey] ?? "";
+      if (state.sortKey === "data_sessao") {
+        left = new Date(left || 0).getTime();
+        right = new Date(right || 0).getTime();
+      }
+      if (typeof left === "number" && typeof right === "number") return (left - right) * dir;
+      return String(left).localeCompare(String(right), "pt", { numeric: true }) * dir;
+    }
+
+    function renderTable() {
+      const rows = filteredRows();
+      const pages = Math.max(1, Math.ceil(rows.length / state.pageSize));
+      state.page = Math.min(state.page, pages);
+      const pageRows = rows.slice((state.page - 1) * state.pageSize, state.page * state.pageSize);
+      $("tableSummary").textContent = `${nf.format(rows.length)} sessões filtradas de ${nf.format(state.sessions.length)}`;
+      $("pageLabel").textContent = `${state.page} / ${pages}`;
+      $("prevPage").disabled = state.page <= 1;
+      $("nextPage").disabled = state.page >= pages;
+      $("tableBody").innerHTML = pageRows.length ? pageRows.map(rowTemplate).join("") : `<tr><td colspan="8" class="muted" style="text-align:center;padding:48px">Sem sessões para os filtros atuais.</td></tr>`;
+      document.querySelectorAll("[data-detail]").forEach((btn) => btn.addEventListener("click", () => openDrawer(btn.dataset.detail)));
+    }
+
+    function rowTemplate(r) {
+      return `
+        <tr>
+          <td class="ref">${escape(r.referencia || "SEM-REF")}</td>
+          <td>${formatDate(r.data_sessao)}</td>
+          <td><strong>${escape(shortTime(r.hora_inicio))} - ${escape(shortTime(r.hora_fim))}</strong><br><span class="muted">${escape(r.duracao || "--:--")}</span></td>
+          <td><div class="truncate-2"><strong>${escape(r.escola_nome)}</strong></div></td>
+          <td><span class="pill">${escape(r.lingua || "PT")}</span></td>
+          <td><strong>${nf.format(num(r.total_pax))}</strong><br><span class="muted">${nf.format(num(r.num_discentes))} alunos · ${nf.format(num(r.num_docentes))} prof.</span></td>
+          <td><div class="truncate-2">${escape(r.recurso_nome)}</div></td>
+          <td style="text-align:right"><button class="btn" data-detail="${escapeAttr(r.id)}"><i data-lucide="panel-right-open"></i> Análise</button></td>
+        </tr>
+      `;
+    }
+
+    function openDrawer(id) {
+      const r = state.sessions.find((s) => String(s.id) === String(id));
+      if (!r) return;
+      $("drawerLang").textContent = r.lingua || "PT";
+      $("drawerTitle").textContent = r.referencia || "SEM-REF";
+      $("drawerSubtitle").textContent = r.escola_nome || "";
+      const topics = splitTopics(r.objetivos_motivacao);
+      $("drawerBody").innerHTML = `
+        <div class="status-line"><span>Data</span><strong>${formatDate(r.data_sessao)}</strong></div>
+        <div class="status-line" style="margin-top:10px"><span>Horário</span><strong>${escape(shortTime(r.hora_inicio))} - ${escape(shortTime(r.hora_fim))}</strong></div>
+        <div class="status-line" style="margin-top:10px"><span>Pax</span><strong>${nf.format(num(r.total_pax))}</strong></div>
+        <h3>Modalidade / Recursos</h3>
+        <p class="muted" style="line-height:1.7">${escape(r.recurso_nome)}</p>
+        <h3>Objetivos pedagógicos</h3>
+        ${topics.length ? topics.map((t, i) => `<div class="topic"><b>${i + 1}</b><span>${escape(t)}</span></div>`).join("") : `<p class="muted">Sem objetivos registados.</p>`}
+      `;
+      $("drawerBackdrop").classList.add("show");
+      $("drawer").classList.add("show");
+      icons();
+    }
+
+    function closeDrawer() {
+      $("drawerBackdrop").classList.remove("show");
+      $("drawer").classList.remove("show");
+    }
+
+    function openModal() {
+      $("modalBackdrop").classList.add("show");
+      $("scheduleModal").classList.add("show");
+      updateFormDerived();
+    }
+
+    function closeModal() {
+      $("modalBackdrop").classList.remove("show");
+      $("scheduleModal").classList.remove("show");
+    }
+
+    async function submitSchedule(event) {
+      event.preventDefault();
+      const form = new FormData($("scheduleModal"));
+      const payload = Object.fromEntries(form.entries());
+      const duration = calcDuration(payload.hora_inicio, payload.hora_fim);
+      const total = num(payload.num_discentes) + num(payload.num_docentes);
+      if (durationToMinutes(duration) <= 0) return toast("Horário inválido", "A hora de fim deve ser posterior à hora de início.");
+      const base = {
+        referencia: payload.referencia || null,
+        data_sessao: payload.data_sessao,
+        hora_inicio: payload.hora_inicio,
+        hora_fim: payload.hora_fim,
+        duracao: duration,
+        lingua: payload.lingua || "PT",
+        num_discentes: num(payload.num_discentes),
+        num_docentes: num(payload.num_docentes),
+        total_pax: total,
+        objetivos_motivacao: payload.objetivos_motivacao || null
+      };
+      $("saveBtn").disabled = true;
+      $("saveBtn").classList.add("loading");
+      try {
+        await insertSession(base, payload.escola_id, payload.recurso_id);
+        toast("Agendamento guardado", "A sessão foi inserida no Supabase.");
+      $("scheduleModal").reset();
+      $("schoolCreatePanel").classList.remove("show");
+      $("resourceCreatePanel").classList.remove("show");
+      closeModal();
+        loadAll();
+      } catch (error) {
+        toast("Erro ao inserir", error.message || "Não foi possível guardar no Supabase.");
+      } finally {
+        $("saveBtn").disabled = false;
+        $("saveBtn").classList.remove("loading");
+      }
+    }
+
+    async function insertSession(base, schoolId, resourceId) {
+      const payload = {
+        ...base,
+        escola_id: Number(schoolId),
+        recurso_id: Number(resourceId)
+      };
+      const { error } = await db.from(TABLES.sessions).insert([payload]);
+      if (error) throw error;
+    }
+
+    function bindEvents() {
+      $("loginForm").addEventListener("submit", handleLogin);
+      $("logoutBtn").addEventListener("click", handleLogout);
+      document.querySelectorAll("[data-sort]").forEach((btn) => btn.addEventListener("click", () => {
+        const key = btn.dataset.sort;
+        state.sortDir = state.sortKey === key && state.sortDir === "asc" ? "desc" : "asc";
+        state.sortKey = key;
+        renderTable();
+      }));
+      $("searchInput").addEventListener("input", (e) => { state.query = e.target.value; state.page = 1; renderTable(); });
+      $("schoolFilter").addEventListener("change", (e) => { state.school = e.target.value; state.page = 1; renderTable(); });
+      $("resourceFilter").addEventListener("change", (e) => { state.resource = e.target.value; state.page = 1; renderTable(); });
+      $("prevPage").addEventListener("click", () => { state.page--; renderTable(); });
+      $("nextPage").addEventListener("click", () => { state.page++; renderTable(); });
+      $("refreshBtn").addEventListener("click", loadAll);
+      $("newBtn").addEventListener("click", openModal);
+      $("closeModal").addEventListener("click", closeModal);
+      $("modalBackdrop").addEventListener("click", (event) => {
+        if (event.target === $("modalBackdrop")) closeModal();
+      });
+      $("closeDrawer").addEventListener("click", closeDrawer);
+      $("drawerBackdrop").addEventListener("click", closeDrawer);
+      $("scheduleModal").addEventListener("submit", submitSchedule);
+      $("scheduleModal").addEventListener("input", updateFormDerived);
+      $("addSchoolBtn").addEventListener("click", () => toggleInlineCreate("schoolCreatePanel"));
+      $("addResourceBtn").addEventListener("click", () => toggleInlineCreate("resourceCreatePanel"));
+      $("saveSchoolBtn").addEventListener("click", () => createLookup("schools", "newSchoolName", "formSchool", "schoolCreatePanel"));
+      $("saveResourceBtn").addEventListener("click", () => createLookup("resources", "newResourceName", "formResource", "resourceCreatePanel"));
+      $("themeBtn").addEventListener("click", () => {
+        const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem("robolab-theme", next);
+      });
+    }
+
+    function toggleInlineCreate(panelId) {
+      $(panelId).classList.toggle("show");
+      icons();
+    }
+
+    async function createLookup(type, inputId, selectId, panelId) {
+      const input = $(inputId);
+      const name = input.value.trim();
+      if (!name) return toast("Campo obrigatório", "Escreve um nome antes de criar o registo.");
+      const isSchool = type === "schools";
+      const table = isSchool ? TABLES.schools : TABLES.resources;
+      const column = "nome";
+      const button = isSchool ? $("saveSchoolBtn") : $("saveResourceBtn");
+      button.disabled = true;
+      button.classList.add("loading");
+      try {
+        const { data, error } = await db.from(table).insert([{ [column]: name }]).select("*").single();
+        if (error) throw error;
+        if (isSchool) {
+          state.schools = [...state.schools, data].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt"));
+        } else {
+          state.resources = [...state.resources, data].sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || ""), "pt"));
+        }
+        hydrateFilters();
+        $(selectId).value = data.id;
+        input.value = "";
+        $(panelId).classList.remove("show");
+        toast("Registo criado", `${name} já está disponível no seletor.`);
+        icons();
+      } catch (error) {
+        toast("Erro ao criar registo", error.message || "Não foi possível inserir no Supabase.");
+      } finally {
+        button.disabled = false;
+        button.classList.remove("loading");
+      }
+    }
+
+    function updateFormDerived() {
+      const form = $("scheduleModal");
+      const duration = calcDuration(form.hora_inicio.value, form.hora_fim.value);
+      const pax = num(form.num_discentes.value) + num(form.num_docentes.value);
+      $("formDuration").textContent = duration;
+      $("formPax").textContent = `Total pax: ${nf.format(pax)}`;
+    }
+
+    function renderEmpty() {
+      $("kpiDeck").innerHTML = "";
+      $("tableBody").innerHTML = `<tr><td colspan="8" class="muted" style="text-align:center;padding:48px">Não foi possível carregar dados reais do Supabase.</td></tr>`;
+      requestAnimationFrame(() => setDataReady(true));
+      icons();
+    }
+
+    async function initAuth() {
+      if (!db) {
+        showLogin();
+        showLoginError("O SDK do Supabase nÃ£o carregou. Confirma a ligaÃ§Ã£o Ã  internet/CDN.");
+        return;
+      }
+      const { data, error } = await db.auth.getSession();
+      if (error) {
+        showLogin();
+        showLoginError(error.message || "NÃ£o foi possÃ­vel validar a sessÃ£o.");
+        return;
+      }
+      if (data.session) {
+        state.session = data.session;
+        showDashboard();
+        startRealtime();
+        loadAll();
+      } else {
+        showLogin();
+      }
+      db.auth.onAuthStateChange((event, session) => {
+        state.session = session;
+        if (session) {
+          showDashboard();
+          startRealtime();
+          loadAll();
+        } else {
+          stopRealtime();
+          showLogin();
+        }
+      });
+    }
+
+    async function handleLogin(event) {
+      event.preventDefault();
+      if (!db) return showLoginError("Supabase nÃ£o estÃ¡ disponÃ­vel neste momento.");
+      $("loginButton").disabled = true;
+      hideLoginError();
+      try {
+        const { data, error } = await db.auth.signInWithPassword({
+          email: $("loginEmail").value.trim(),
+          password: $("loginPassword").value
+        });
+        if (error) throw error;
+        state.session = data.session;
+        showDashboard();
+        startRealtime();
+        await loadAll();
+      } catch (error) {
+        showLoginError(error.message || "Credenciais invÃ¡lidas ou utilizador sem acesso.");
+      } finally {
+        $("loginButton").disabled = false;
+      }
+    }
+
+    async function handleLogout() {
+      if (!db) return;
+      await db.auth.signOut();
+      state.session = null;
+      stopRealtime();
+      showLogin();
+    }
+
+    function showLogin() {
+      $("loginScreen").classList.remove("hidden");
+      $("appShell").classList.add("hidden");
+      icons();
+    }
+
+    function showDashboard() {
+      $("loginScreen").classList.add("hidden");
+      $("appShell").classList.remove("hidden");
+      hideLoginError();
+      icons();
+    }
+
+    function showLoginError(message) {
+      $("loginError").textContent = message;
+      $("loginError").classList.add("show");
+    }
+
+    function hideLoginError() {
+      $("loginError").classList.remove("show");
+      $("loginError").textContent = "";
+    }
+
+    function startRealtime() {
+      if (!db || state.realtimeChannel) return;
+      state.realtimeChannel = db.channel("cei-robolab-live")
+        .on("postgres_changes", { event: "*", schema: "public", table: TABLES.sessions }, loadAll)
+        .on("postgres_changes", { event: "*", schema: "public", table: TABLES.schools }, loadAll)
+        .on("postgres_changes", { event: "*", schema: "public", table: TABLES.resources }, loadAll)
+        .subscribe();
+    }
+
+    function stopRealtime() {
+      if (db && state.realtimeChannel) db.removeChannel(state.realtimeChannel);
+      state.realtimeChannel = null;
+    }
+
+    function showError(message) {
+      $("errorText").textContent = message;
+      $("errorPanel").classList.add("show");
+    }
+    function hideError() { $("errorPanel").classList.remove("show"); }
+    function toast(title, message) {
+      $("toast").innerHTML = `<strong>${escape(title)}</strong><div class="muted" style="margin-top:5px">${escape(message)}</div>`;
+      $("toast").classList.add("show");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => $("toast").classList.remove("show"), 4200);
+    }
+
+    function unique(items) { return [...new Set(items.filter(Boolean))].sort((a, b) => a.localeCompare(b, "pt")); }
+    function num(value) { const n = Number(value); return Number.isFinite(n) ? n : 0; }
+    function shortTime(value) { return value ? String(value).slice(0, 5) : "--:--"; }
+    function calcDuration(start, end) { return minToDuration(Math.max(0, diffMinutes(start, end))); }
+    function diffMinutes(start, end) {
+      if (!start || !end) return 0;
+      const [sh, sm] = String(start).slice(0, 5).split(":").map(Number);
+      const [eh, em] = String(end).slice(0, 5).split(":").map(Number);
+      return eh * 60 + em - (sh * 60 + sm);
+    }
+    function minToDuration(minutes) {
+      const total = Math.round(minutes || 0);
+      return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
+    }
+    function durationToMinutes(value) {
+      const m = String(value || "").match(/(\d{1,2}):(\d{2})/);
+      return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+    }
+    function durationMinutes(duration, start, end) { return durationToMinutes(duration) || Math.max(0, diffMinutes(start, end)); }
+    function formatDate(value) {
+      if (!value) return "--";
+      const date = new Date(`${value}T00:00:00`);
+      return Number.isNaN(date.getTime()) ? escape(value) : dateFmt.format(date);
+    }
+    function splitTopics(text) {
+      return String(text || "").split(/\n|;|•/).map((x) => x.trim()).filter((x) => x.length > 3);
+    }
+    function escape(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" })[c]);
+    }
+    function escapeAttr(value) { return escape(value).replace(/`/g, "&#096;"); }
+
+    bindEvents();
+    skeletons();
+    icons();
+    initAuth();
+  </script>
+</body>
+</html>
