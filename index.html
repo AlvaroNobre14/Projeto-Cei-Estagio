@@ -252,6 +252,11 @@
     .modal-body { padding: 20px; overflow-y: auto; max-height: 62vh; }
     .form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
     .form-grid .full { grid-column: 1 / -1; }
+    .admin-note {
+      grid-column: 1 / -1; margin: 0; padding: 12px 14px; border-radius: 14px;
+      border: 1px solid rgba(37,99,235,.18); color: var(--muted); background: var(--blue-soft);
+      font-size: 13px; line-height: 1.55; font-weight: 700;
+    }
     label { display: grid; gap: 7px; font-size: 13px; color: var(--muted); font-weight: 850; }
     .hidden { display: none !important; }
     .data-fade { opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease; }
@@ -1113,6 +1118,9 @@
         </div>
         <div class="top-actions">
           <span class="badge green" id="connStatus" style="display:none">A iniciar</span>
+          <button class="btn" id="backupBtn"><i data-lucide="download"></i> Backup</button>
+          <button class="btn" id="adminBtn"><i data-lucide="user-plus"></i> Utilizadores</button>
+          <a class="btn" id="manualBtn" href="https://drive.google.com/file/d/1dQ_ThLuCBOEl4QS_X8FQrwzBPWhYbntY/view?usp=sharing" target="_blank" rel="noopener noreferrer"><i data-lucide="book-open"></i> Manual</a>
           <button class="btn ghost" id="themeBtn" title="Alternar tema"><i data-lucide="sun-medium"></i></button>
           <button class="btn ghost" id="logoutBtn" title="Terminar sessão"><i data-lucide="log-out"></i></button>
           <button class="btn" id="refreshBtn" title="Atualizar dados" aria-label="Atualizar dados"><i data-lucide="refresh-cw"></i></button>
@@ -1243,6 +1251,31 @@
     <div class="modal-foot">
       <span class="muted" id="formPax">Total pax: 0</span>
       <button class="btn primary" type="submit" id="saveBtn"><i data-lucide="send"></i> Guardar no Supabase</button>
+    </div>
+  </form>
+  </div>
+
+  <div class="modal-backdrop modal-overlay" id="adminBackdrop">
+  <form class="modal-card modal-content" id="adminModal">
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Administração</p>
+        <h2 style="margin:0">Novos utilizadores</h2>
+      </div>
+      <button class="btn ghost" type="button" id="closeAdminModal"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <p class="admin-note">Cria acessos com email e palavra-passe diretamente no Supabase. O utilizador fica sujeito às regras de autenticação configuradas no projeto.</p>
+        <label class="full">Email do utilizador<input class="field" name="email" type="email" autocomplete="off" placeholder="novo.utilizador@empresa.pt" required /></label>
+        <label>Palavra-passe<input class="field" name="password" id="newUserPassword" type="text" autocomplete="new-password" minlength="8" required /></label>
+        <label>Confirmar palavra-passe<input class="field" name="password_confirm" type="text" autocomplete="new-password" minlength="8" required /></label>
+        <button class="btn" type="button" id="generatePasswordBtn"><i data-lucide="key-round"></i> Gerar palavra-passe</button>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="muted" id="adminStatus">Pronto para criar acesso</span>
+      <button class="btn primary" type="submit" id="createUserBtn"><i data-lucide="user-plus"></i> Criar utilizador</button>
     </div>
   </form>
   </div>
@@ -1576,6 +1609,100 @@
       }
     }
 
+    function exportBackup() {
+      const stamp = new Date();
+      const pad = (value) => String(value).padStart(2, "0");
+      const fileDate = `${stamp.getFullYear()}-${pad(stamp.getMonth() + 1)}-${pad(stamp.getDate())}_${pad(stamp.getHours())}-${pad(stamp.getMinutes())}`;
+      const payload = {
+        criado_em: stamp.toISOString(),
+        criado_por: state.session?.user?.email || null,
+        totais: {
+          sessoes: state.sessions.length,
+          escolas: state.schools.length,
+          recursos: state.resources.length
+        },
+        sessoes: state.sessions,
+        escolas: state.schools,
+        recursos: state.resources
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `robolab-backup-${fileDate}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      toast("Backup criado", "O ficheiro foi descarregado para o computador.");
+    }
+
+    function openAdminModal() {
+      $("adminBackdrop").classList.add("show");
+      $("adminModal").classList.add("show");
+      $("adminStatus").textContent = "Pronto para criar acesso";
+      icons();
+    }
+
+    function closeAdminModal() {
+      $("adminBackdrop").classList.remove("show");
+      $("adminModal").classList.remove("show");
+    }
+
+    function generatePassword() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
+      const password = Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      const form = $("adminModal");
+      form.password.value = password;
+      form.password_confirm.value = password;
+      $("adminStatus").textContent = "Palavra-passe gerada";
+    }
+
+    async function createUser(event) {
+      event.preventDefault();
+      if (!db) return toast("Erro ao criar utilizador", "A ligação ao Supabase não está disponível neste momento.");
+      const form = $("adminModal");
+      const email = form.email.value.trim();
+      const password = form.password.value;
+      const confirmPassword = form.password_confirm.value;
+      if (password.length < 8) return toast("Palavra-passe curta", "Usa pelo menos 8 caracteres.");
+      if (password !== confirmPassword) return toast("Confirmação inválida", "As palavras-passe não coincidem.");
+      $("createUserBtn").disabled = true;
+      $("createUserBtn").classList.add("loading");
+      $("adminStatus").textContent = "A criar utilizador...";
+      try {
+        const { data, error } = await db.auth.signUp({
+          email,
+          password
+        });
+        if (error) throw error;
+        form.reset();
+        if (data?.session) {
+          closeAdminModal();
+          toast("Utilizador criado", "O novo acesso já pode entrar com a palavra-passe definida.");
+        } else {
+          $("adminStatus").textContent = "Utilizador criado. Pode ser necessário confirmar o email antes de entrar.";
+          toast("Utilizador criado", "Confirma o email do novo utilizador se o Supabase pedir confirmação.");
+        }
+      } catch (error) {
+        const message = friendlyAuthError(error);
+        $("adminStatus").textContent = message;
+        toast("Erro ao criar utilizador", message);
+      } finally {
+        $("createUserBtn").disabled = false;
+        $("createUserBtn").classList.remove("loading");
+      }
+    }
+
+    function friendlyAuthError(error) {
+      const message = String(error?.message || "").toLowerCase();
+      if (message.includes("email rate limit")) return "O Supabase bloqueou temporariamente novos emails. Aguarda uns minutos e tenta outra vez.";
+      if (message.includes("already registered") || message.includes("already exists")) return "Esse email já tem utilizador criado.";
+      if (message.includes("password")) return "A palavra-passe não cumpre as regras definidas no Supabase.";
+      if (message.includes("signup") || message.includes("signups")) return "A criação de novos utilizadores está limitada nas definições do Supabase.";
+      return error?.message || "Confirma as regras de autenticação do Supabase.";
+    }
+
     function bindEvents() {
       $("loginForm").addEventListener("submit", handleLogin);
       $("logoutBtn").addEventListener("click", handleLogout);
@@ -1591,11 +1718,19 @@
       $("prevPage").addEventListener("click", () => { state.page--; renderTable(); });
       $("nextPage").addEventListener("click", () => { state.page++; renderTable(); });
       $("refreshBtn").addEventListener("click", loadAll);
+      $("backupBtn").addEventListener("click", exportBackup);
+      $("adminBtn").addEventListener("click", openAdminModal);
       $("newBtn").addEventListener("click", openModal);
       $("closeModal").addEventListener("click", closeModal);
       $("modalBackdrop").addEventListener("click", (event) => {
         if (event.target === $("modalBackdrop")) closeModal();
       });
+      $("closeAdminModal").addEventListener("click", closeAdminModal);
+      $("adminBackdrop").addEventListener("click", (event) => {
+        if (event.target === $("adminBackdrop")) closeAdminModal();
+      });
+      $("adminModal").addEventListener("submit", createUser);
+      $("generatePasswordBtn").addEventListener("click", generatePassword);
       $("closeDrawer").addEventListener("click", closeDrawer);
       $("drawerBackdrop").addEventListener("click", closeDrawer);
       $("scheduleModal").addEventListener("submit", submitSchedule);
