@@ -257,6 +257,19 @@
       border: 1px solid rgba(37,99,235,.18); color: var(--muted); background: var(--blue-soft);
       font-size: 13px; line-height: 1.55; font-weight: 700;
     }
+    .admin-users {
+      grid-column: 1 / -1; display: grid; gap: 10px; padding-top: 6px;
+    }
+    .admin-users-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .admin-users-head h3 { margin: 0; font-size: 16px; letter-spacing: -.02em; }
+    .admin-user-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 11px 12px; border: 1px solid var(--line); border-radius: 14px;
+      background: rgba(255,255,255,.42);
+    }
+    [data-theme="dark"] .admin-user-row { background: rgba(15,23,42,.34); }
+    .admin-user-row strong { display: block; font-size: 13px; }
+    .admin-user-row small { display: block; margin-top: 3px; color: var(--muted); }
     label { display: grid; gap: 7px; font-size: 13px; color: var(--muted); font-weight: 850; }
     .hidden { display: none !important; }
     .data-fade { opacity: 0; transform: translateY(8px); transition: opacity .35s ease, transform .35s ease; }
@@ -1120,6 +1133,7 @@
           <span class="badge green" id="connStatus" style="display:none">A iniciar</span>
           <button class="btn" id="backupBtn"><i data-lucide="download"></i> Backup</button>
           <button class="btn" id="adminBtn"><i data-lucide="user-plus"></i> Utilizadores</button>
+          <button class="btn" id="usersPanelBtn"><i data-lucide="users"></i> Acessos</button>
           <a class="btn" id="manualBtn" href="https://drive.google.com/file/d/1dQ_ThLuCBOEl4QS_X8FQrwzBPWhYbntY/view?usp=sharing" target="_blank" rel="noopener noreferrer"><i data-lucide="book-open"></i> Manual</a>
           <button class="btn ghost" id="themeBtn" title="Alternar tema"><i data-lucide="sun-medium"></i></button>
           <button class="btn ghost" id="logoutBtn" title="Terminar sessão"><i data-lucide="log-out"></i></button>
@@ -1266,7 +1280,7 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
-        <p class="admin-note">Cria acessos com email e palavra-passe diretamente no Supabase. O utilizador fica sujeito às regras de autenticação configuradas no projeto.</p>
+        <p class="admin-note">A palavra-passe deve ter pelo menos 8 caracteres, uma maiúscula, uma minúscula, um número e um caracter especial.</p>
         <label class="full">Email do utilizador<input class="field" name="email" type="email" autocomplete="off" placeholder="novo.utilizador@empresa.pt" required /></label>
         <label>Palavra-passe<input class="field" name="password" id="newUserPassword" type="text" autocomplete="new-password" minlength="8" required /></label>
         <label>Confirmar palavra-passe<input class="field" name="password_confirm" type="text" autocomplete="new-password" minlength="8" required /></label>
@@ -1278,6 +1292,31 @@
       <button class="btn primary" type="submit" id="createUserBtn"><i data-lucide="user-plus"></i> Criar utilizador</button>
     </div>
   </form>
+  </div>
+
+  <div class="modal-backdrop modal-overlay" id="usersBackdrop">
+  <div class="modal-card modal-content" id="usersModal">
+    <div class="modal-head">
+      <div>
+        <p class="eyebrow">Acessos</p>
+        <h2 style="margin:0">Utilizadores existentes</h2>
+      </div>
+      <button class="btn ghost" type="button" id="closeUsersModal"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="admin-users">
+        <div class="admin-users-head">
+          <h3>Emails com acesso</h3>
+          <button class="btn" type="button" id="refreshUsersBtn"><i data-lucide="refresh-cw"></i> Atualizar</button>
+        </div>
+        <div id="adminUsersList" class="list-item muted">A carregar utilizadores...</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <span class="muted" id="usersStatus">Lista de acessos</span>
+      <button class="btn primary" type="button" id="openCreateUserBtn"><i data-lucide="user-plus"></i> Novo utilizador</button>
+    </div>
+  </div>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -1613,28 +1652,35 @@
       const stamp = new Date();
       const pad = (value) => String(value).padStart(2, "0");
       const fileDate = `${stamp.getFullYear()}-${pad(stamp.getMonth() + 1)}-${pad(stamp.getDate())}_${pad(stamp.getHours())}-${pad(stamp.getMinutes())}`;
-      const payload = {
-        criado_em: stamp.toISOString(),
-        criado_por: state.session?.user?.email || null,
-        totais: {
-          sessoes: state.sessions.length,
-          escolas: state.schools.length,
-          recursos: state.resources.length
-        },
-        sessoes: state.sessions,
-        escolas: state.schools,
-        recursos: state.resources
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const columns = [
+        ["referencia", "Referência"],
+        ["data_sessao", "Data"],
+        ["hora_inicio", "Hora início"],
+        ["hora_fim", "Hora fim"],
+        ["duracao", "Duração"],
+        ["escola_nome", "Escola / Grupo"],
+        ["recurso_nome", "Modalidade / Recursos"],
+        ["lingua", "Língua"],
+        ["num_discentes", "Discentes"],
+        ["num_docentes", "Docentes"],
+        ["total_pax", "Pax"],
+        ["objetivos_motivacao", "Objetivos / Motivação"]
+      ];
+      const csvEscape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+      const rows = [
+        columns.map(([, label]) => csvEscape(label)).join(";"),
+        ...state.sessions.map((session) => columns.map(([key]) => csvEscape(session[key])).join(";"))
+      ];
+      const blob = new Blob([`\uFEFF${rows.join("\r\n")}`], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `robolab-backup-${fileDate}.json`;
+      link.download = `robolab-backup-${fileDate}.csv`;
       document.body.appendChild(link);
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      toast("Backup criado", "O ficheiro foi descarregado para o computador.");
+      toast("Backup criado", "A folha de cálculo foi descarregada para o computador.");
     }
 
     function openAdminModal() {
@@ -1649,13 +1695,42 @@
       $("adminModal").classList.remove("show");
     }
 
+    function openUsersModal() {
+      $("usersBackdrop").classList.add("show");
+      $("usersModal").classList.add("show");
+      $("usersStatus").textContent = "A carregar acessos...";
+      icons();
+      loadAdminUsers();
+    }
+
+    function closeUsersModal() {
+      $("usersBackdrop").classList.remove("show");
+      $("usersModal").classList.remove("show");
+    }
+
     function generatePassword() {
-      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%";
-      const password = Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+      const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+      const lower = "abcdefghijkmnopqrstuvwxyz";
+      const numbers = "23456789";
+      const special = "!@#$%";
+      const all = `${upper}${lower}${numbers}${special}`;
+      const pick = (chars) => chars[Math.floor(Math.random() * chars.length)];
+      const password = [pick(upper), pick(lower), pick(numbers), pick(special), ...Array.from({ length: 10 }, () => pick(all))]
+        .sort(() => Math.random() - .5)
+        .join("");
       const form = $("adminModal");
       form.password.value = password;
       form.password_confirm.value = password;
       $("adminStatus").textContent = "Palavra-passe gerada";
+    }
+
+    function validatePassword(password) {
+      if (password.length < 8) return "A palavra-passe deve ter pelo menos 8 caracteres.";
+      if (!/[A-Z]/.test(password)) return "A palavra-passe deve ter pelo menos uma letra maiúscula.";
+      if (!/[a-z]/.test(password)) return "A palavra-passe deve ter pelo menos uma letra minúscula.";
+      if (!/[0-9]/.test(password)) return "A palavra-passe deve ter pelo menos um número.";
+      if (!/[^A-Za-z0-9]/.test(password)) return "A palavra-passe deve ter pelo menos um caracter especial.";
+      return "";
     }
 
     async function createUser(event) {
@@ -1665,7 +1740,11 @@
       const email = form.email.value.trim();
       const password = form.password.value;
       const confirmPassword = form.password_confirm.value;
-      if (password.length < 8) return toast("Palavra-passe curta", "Usa pelo menos 8 caracteres.");
+      const passwordError = validatePassword(password);
+      if (passwordError) {
+        $("adminStatus").textContent = passwordError;
+        return toast("Palavra-passe inválida", passwordError);
+      }
       if (password !== confirmPassword) return toast("Confirmação inválida", "As palavras-passe não coincidem.");
       $("createUserBtn").disabled = true;
       $("createUserBtn").classList.add("loading");
@@ -1703,6 +1782,84 @@
       return error?.message || "Confirma as regras de autenticação do Supabase.";
     }
 
+    async function loadAdminUsers() {
+  if (!db) return;
+  $("adminUsersList").innerHTML = "A carregar utilizadores...";
+  $("usersStatus").textContent = "A carregar acessos...";
+  try {
+    // ENVIAR OS DOIS PARÂMETROS CORRETOS PARA O SUPABASE
+    const { data, error } = await db.rpc("gerir_utilizadores", {
+      action: "list",
+      user_id: null
+    });
+   
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+   
+    // Passar os dados diretamente para renderizar
+    renderAdminUsers(data || []);
+    $("usersStatus").textContent = "Lista atualizada";
+  } catch (error) {
+    const message = friendlyFunctionError(error);
+    $("adminUsersList").innerHTML = `<span class="muted">${escape(message)}</span>`;
+    $("usersStatus").textContent = "Não foi possível carregar";
+  }
+}
+
+function renderAdminUsers(users) {
+  if (!users.length) {
+    $("adminUsersList").innerHTML = `<span class="muted">Ainda não há utilizadores para mostrar.</span>`;
+    return;
+  }
+  $("adminUsersList").innerHTML = users.map((user) => `
+    <div class="admin-user-row">
+      <div>
+        <strong>${escape(user.email || "Sem email")}</strong>
+        <small>${escape(user.created_at ? `Criado em ${formatDate(user.created_at.slice(0, 10))}` : "ID: " + user.id)}</small>
+      </div>
+      <button class="btn danger" type="button" data-user-delete="${escapeAttr(user.id)}"><i data-lucide="trash-2"></i> Remover</button>
+    </div>
+  `).join("");
+ 
+  document.querySelectorAll("[data-user-delete]").forEach((btn) =>
+    btn.addEventListener("click", () => deleteAuthUser(btn.dataset.userDelete))
+  );
+  icons();
+}
+
+async function deleteAuthUser(userId) {
+  const button = [...document.querySelectorAll("[data-user-delete]")].find((item) => item.dataset.userDelete === userId);
+  const row = button?.closest(".admin-user-row");
+  const email = row?.querySelector("strong")?.textContent || "este utilizador";
+  if (!confirm(`Remover ${email}? Esta ação não pode ser anulada.`)) return;
+
+  try {
+    // ENVIAR OS DOIS PARÂMETROS PARA APAGAR COM SEGURANÇA
+    const { data, error } = await db.rpc("gerir_utilizadores", {
+      action: "delete",
+      user_id: userId
+    });
+
+    if (error) throw error;
+    if (data?.error) throw new Error(data.error);
+
+    toast("Utilizador removido", "O acesso foi apagado com sucesso.");
+    loadAdminUsers(); // Recarregar a lista automaticamente
+  } catch (error) {
+    toast("Erro ao remover", friendlyFunctionError(error));
+  }
+}
+
+
+    function friendlyFunctionError(error) {
+      const message = String(error?.message || "").toLowerCase();
+      if (message.includes("failed to send") || message.includes("edge function")) {
+        return "A função gerir_utilizadores ainda não está publicada ou não está acessível no Supabase.";
+      }
+      if (message.includes("unauthorized") || message.includes("sess")) return "Inicia sessão novamente antes de gerir utilizadores.";
+      return error?.message || "Não foi possível comunicar com o Supabase.";
+    }
+
     function bindEvents() {
       $("loginForm").addEventListener("submit", handleLogin);
       $("logoutBtn").addEventListener("click", handleLogout);
@@ -1720,6 +1877,7 @@
       $("refreshBtn").addEventListener("click", loadAll);
       $("backupBtn").addEventListener("click", exportBackup);
       $("adminBtn").addEventListener("click", openAdminModal);
+      $("usersPanelBtn").addEventListener("click", openUsersModal);
       $("newBtn").addEventListener("click", openModal);
       $("closeModal").addEventListener("click", closeModal);
       $("modalBackdrop").addEventListener("click", (event) => {
@@ -1729,8 +1887,17 @@
       $("adminBackdrop").addEventListener("click", (event) => {
         if (event.target === $("adminBackdrop")) closeAdminModal();
       });
+      $("closeUsersModal").addEventListener("click", closeUsersModal);
+      $("usersBackdrop").addEventListener("click", (event) => {
+        if (event.target === $("usersBackdrop")) closeUsersModal();
+      });
+      $("openCreateUserBtn").addEventListener("click", () => {
+        closeUsersModal();
+        openAdminModal();
+      });
       $("adminModal").addEventListener("submit", createUser);
       $("generatePasswordBtn").addEventListener("click", generatePassword);
+      $("refreshUsersBtn").addEventListener("click", loadAdminUsers);
       $("closeDrawer").addEventListener("click", closeDrawer);
       $("drawerBackdrop").addEventListener("click", closeDrawer);
       $("scheduleModal").addEventListener("submit", submitSchedule);
